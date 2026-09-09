@@ -1,0 +1,83 @@
+# ====================================================================
+# KiCad / FreeCAD Git Ignore Template
+# For PCBs designed using KiCad: https://www.kicad.org/
+# Format documentation: https://kicad.org/help/file-formats/
+# ====================================================================
+
+# ChromeOS / Linux system files
+.Trash-*
+.directory
+*~
+
+# OS-specific clutter
+.DS_Store
+Thumbs.db
+
+# FreeCAD lock and auto-backup files
+*.lock
+*.FCStd[0-9]*
+*.FCBak
+
+# KiCad backup, temporary, lock, and auto-save files
+*.000
+*.bak
+*.bck
+*.kicad_pcb-bak
+*.kicad_sch-bak
+*-backups
+*-cache*
+*-bak
+*-bak*
+*~
+~*
+_autosave-*
+\#auto_saved_files\#
+*.tmp
+*-save.pro
+*-save.kicad_pcb
+fp-info-cache
+~*.lck
+\#auto_saved_files#
+#_autosave*
+#*-backups/
+
+
+# Local configuration files (contains local path mappings, don't commit)
+#fp-lib-table
+#sym-lib-table
+
+# KiCad local workspace/window state configurations
+*.kicad_prl
+
+# KiCad netlist files (easily regenerated from schematics)
+*.net
+
+# KiCad autorouter intermediate tracking files
+*.dsn
+*.ses
+
+# Exported BOM files
+*.xml
+*.csv
+
+# Archived Backups (KiCad 6.0)
+**/*-backups/*.zip
+
+# Local git-based history (KiCad 9.0+)
+.history
+#.history/
+
+# KiCad Manufacturing Outputs 
+# (Uncomment the line below if you prefer generating Gerbers on the fly 
+# rather than tracking your production folder)
+# /Gerbers/
+
+# Ignore the compiler output directories (Ninja / Make build targets)
+build/
+.cache/
+
+# Ignore the dynamically generated firmware version header file
+# (Prevents git from showing uncommitted changes on every single build)
+Core/Inc/version.h
+
+.git/
