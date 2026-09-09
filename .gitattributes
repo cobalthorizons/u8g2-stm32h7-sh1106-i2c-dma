@@ -1,0 +1,44 @@
+# ====================================================================
+# Git LFS & Binary Handling for Hardware Projects
+# ====================================================================
+
+# --------------------------------------------------------------------
+# 1. Hardware Design Files (KiCad, Altium, Eagle)
+# --------------------------------------------------------------------
+# Force Git to treat design files as binary to protect internal formatting
+*.PcbDoc        merge=binary -crlf
+*.SchDoc        merge=binary -crlf
+*.PrjPCB        merge=binary -crlf
+*.kicad_pcb     merge=binary -crlf
+*.kicad_sch     merge=binary -crlf
+*.brd           merge=binary -crlf
+*.sch           merge=binary -crlf
+
+# --------------------------------------------------------------------
+# 2. 3D Mechanical / CAD Models (Tracked via Git LFS)
+# --------------------------------------------------------------------
+*.step          filter=lfs diff=lfs merge=lfs -text
+*.STEP          filter=lfs diff=lfs merge=lfs -text
+*.stp           filter=lfs diff=lfs merge=lfs -text
+*.STP           filter=lfs diff=lfs merge=lfs -text
+*.stl           filter=lfs diff=lfs merge=lfs -text
+*.STL           filter=lfs diff=lfs merge=lfs -text
+*.iges          filter=lfs diff=lfs merge=lfs -text
+*.igs           filter=lfs diff=lfs merge=lfs -text
+
+# --------------------------------------------------------------------
+# 3. Manufacturing & Documentation Binaries (Tracked via Git LFS)
+# --------------------------------------------------------------------
+*.pdf           filter=lfs diff=lfs merge=lfs -text
+*.PDF           filter=lfs diff=lfs merge=lfs -text
+*.zip           filter=lfs diff=lfs merge=lfs -text
+*.ZIP           filter=lfs diff=lfs merge=lfs -text
+*.tar.gz        filter=lfs diff=lfs merge=lfs -text
+
+# --------------------------------------------------------------------
+# 4. Standard Text / Code Files (Standard Git formatting rules)
+# --------------------------------------------------------------------
+*.txt           text
+*.md            text
+*.gitignore     text
+*.gitattributes text
