@@ -43,17 +43,15 @@ void U8G2_HAL_StartFrame(u8g2_t* u8g2)
 /* SH1106 Initialization Function */
 void U8G2_HAL_SH1106_Init(u8g2_t* u8g2, I2C_HandleTypeDef* hi2c)
 {
-    p_hi2c = hi2c;
+    p_hi2c = hi2c;  // Only map the real physical pointer on the actual chip
 
     /* Constructor for the SH1106 128x64 noname I2C hardware via u8g2_d_setup.c */
     u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2, U8G2_R1, u8x8_byte_stm32_hw_dma_i2c, u8x8_gpio_and_delay_stm32);
     u8g2_SetI2CAddress(u8g2, (OLED_I2C_ADDRESS << 1));  // Set the I2C address for the SH1106 display
-
-    u8g2_InitDisplay(u8g2);  // Send initialization sequence to the glass
+    u8g2_InitDisplay(u8g2);                             // Send initialization sequence to the glass
     // The following line is commented out to prevent the display from being powered on immediately. Uncomment it if you want the display to turn on after initialization.
     u8g2_SetPowerSave(u8g2, 0);  // Wake up display
     u8g2_ClearBuffer(u8g2);
-
     while (!i2c_dma_tx_complete)
     {
         __NOP();
