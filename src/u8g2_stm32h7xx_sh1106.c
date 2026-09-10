@@ -1,9 +1,9 @@
 /**
  * @file    u8g2_stm32h7xx_sh1106.c
- * @brief   SH1106 OLED display driver for STM32H7xx microcontrollers
+ * @brief   SH1106 OLED display driver for STM32H7xx microcontrollers using u8g2 library with I2C DMA support.
  * @todo    evaluate __DSB(); gold standard?
  * @author  J.M.Gaskill
- * @date    2024-06-05
+ * @date    2026-08-28
  * @version 0.0.2
  * @note    This file is part of the CT50 Mk-I project.
  * @note    See the LICENSE file in the project root for license terms.
@@ -129,7 +129,8 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
                 // Check the peripheral state
                 volatile HAL_I2C_StateTypeDef i2c_state = HAL_I2C_GetState(p_hi2c);
 
-                printf("[I2C ERROR] Transmit Launch Failed. ErrorCode: 0x%lX, State: %d\n", i2c_error, i2c_state);
+                //printf("[I2C ERROR] Transmit Launch Failed. ErrorCode: 0x%lX, State: %d\n", i2c_error, i2c_state); // 20260908 JMG
+                printf("[I2C ERROR] Transmit Launch Failed. ErrorCode: 0x%lX, State: %d\n", i2c_error, (int)i2c_state);
 
                 HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
                 HAL_Delay(50);
