@@ -108,6 +108,7 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
                Ensure the CPU store buffers are drained before returning */
             __DMB();  // Data Memory Barrier
             __DSB();  // Data Synchronization Barrier
+            //__ISB();  // ???
 
             // Push local CPU cache to RAM_D2 so the physical DMA engine can read it
             if (HAL_I2C_Master_Transmit_DMA(p_hi2c, (OLED_I2C_ADDRESS << 1), dma_buffer, buf_idx) != HAL_OK)
