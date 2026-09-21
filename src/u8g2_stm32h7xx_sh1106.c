@@ -4,7 +4,7 @@
  * @todo    evaluate __DSB(); gold standard?
  * @author  J.M.Gaskill
  * @date    2026-08-28
- * @version 0.0.2
+ * @version 0.1.0
  * @note    #define OLED_I2C_ADDRESS ((uint16_t)(0x3C)) in main.h
  * @note    This file is part of the CT50 Mk-I project.
  * @note    See the LICENSE file in the project root for license terms.
@@ -24,7 +24,7 @@ volatile uint8_t i2c_dma_tx_complete = 1;
     which helps avoid cache coherency issues when using DMA.
     160 bytes is 32-byte aligned (32 * 5). Perfect for Cortex-M7 cache lines. RAM_D2 is uncached */
 __attribute__((
-    section(".ram_d2_buffers"),
+    section(".RAM_D2"),
     aligned(32))) static uint8_t dma_buffer[256];  // 160 bytes is more than enough for a single frame of SH1106 data
 static uint16_t buf_idx = 0;                       // Index into the DMA buffer for the current transfer
 
