@@ -5,12 +5,13 @@
  * @author  J.M.Gaskill
  * @date    2026-08-28
  * @version 0.0.2
+ * @note    #define OLED_I2C_ADDRESS ((uint16_t)(0x3C)) in main.h
  * @note    This file is part of the CT50 Mk-I project.
  * @note    See the LICENSE file in the project root for license terms.
  */
 
-#include "main.h"
 #include "u8g2_stm32h7xx_sh1106.h"
+#include "main.h"
 #include <stdio.h>
 
 static I2C_HandleTypeDef* p_hi2c;  // Pointer to the I2C handle used for communication with the SH1106 display
@@ -128,11 +129,10 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
                 // Check the peripheral state
                 volatile HAL_I2C_StateTypeDef i2c_state = HAL_I2C_GetState(p_hi2c);
 
-                //printf("[I2C ERROR] Transmit Launch Failed. ErrorCode: 0x%lX, State: %d\n", i2c_error, i2c_state); // 20260908 JMG
                 printf("[I2C ERROR] Transmit Launch Failed. ErrorCode: 0x%lX, State: %d\n", i2c_error, (int)i2c_state);
 
-                HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
-                HAL_Delay(50);
+                //HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
+                //HAL_Delay(50);
                 return 0;
             }
             break;
