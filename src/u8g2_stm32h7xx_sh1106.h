@@ -1,6 +1,7 @@
 /**
  * @file    u8g2_stm32h7xx_sh1106.h
  * @brief   SH1106 OLED display driver for STM32H7xx microcontrollers
+ * @todo    prevent screen garbage at boot init
  * @author  J.M.Gaskill
  * @date    2024-06-05
  * @version 1.0.0
