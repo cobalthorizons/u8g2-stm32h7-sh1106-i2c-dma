@@ -103,6 +103,13 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
                 {
                     dma_buffer[buf_idx++] = *data;
                 }
+                else
+                {
+                    // FATAL ERROR: U8g2 sent a chunk larger than our DMA buffer.
+                    // Halt execution so the developer knows immediately.
+                    printf("[U8G2 FATAL] DMA Buffer Overflow!\n");
+                    while(1) { __NOP(); } // Trap
+                }
                 data++;
                 arg_int--;
             }
@@ -118,21 +125,21 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
             // Treats short command bursts and pixel streams uniformly and transfer via DMA
             i2c_dma_tx_complete = 0;
 
-            // FIX ME: should __DMB() and __DSB() be exclusively located in != HAL_OK block below?
             /* Use Data Synchronization Barriers to force CPU pipeline ordering
                Ensure the CPU store buffers are drained before returning */
-            __DMB();  // Data Memory Barrier
+            //__DMB();  // Data Memory Barrier
             __DSB();  // Data Synchronization Barrier
-            //__ISB();  // ???
+
+            /* Attempt to clean the D-Cache, in case the MPU is misconfigured,
+            for the exact size of our payload. Ensures physical RAM matches
+            CPU cache before DMA reads it. (Takes 32-byte aligned address, and
+            calculates number of bytes). */
+            SCB_CleanDCache_by_Addr((uint32_t*)dma_buffer, buf_idx);
 
             // Push local CPU cache to RAM_D2 so the physical DMA engine can read it
             if (HAL_I2C_Master_Transmit_DMA(p_hi2c, (OLED_I2C_ADDRESS << 1), dma_buffer, buf_idx) != HAL_OK)
             {
                 i2c_dma_tx_complete = 1;  // Unlatch lock on structural failure
-                /* Use Data Synchronization Barriers to force CPU pipeline ordering
-                   Ensure the CPU store buffers are drained before returning */
-                __DMB();  // Data Memory Barrier
-                __DSB();  // Data Synchronization Barrier
 
                 // Check the HAL Status (HAL_ERROR, HAL_BUSY, HAL_TIMEOUT)
                 //volatile HAL_StatusTypeDef i2c_status = HAL_I2C_GetStatus(p_hi2c);
@@ -144,9 +151,6 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
                 volatile HAL_I2C_StateTypeDef i2c_state = HAL_I2C_GetState(p_hi2c);
 
                 printf("[I2C ERROR] Transmit Launch Failed. ErrorCode: 0x%lX, State: %d\n", i2c_error, (int)i2c_state);
-
-                //HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
-                //HAL_Delay(50);
                 return 0;
             }
             break;
@@ -176,27 +180,30 @@ uint8_t u8x8_gpio_and_delay_stm32(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, vo
             HAL_Delay(1);  // Ensure at least 1ms delay for very short waits
             break;
         case U8X8_MSG_DELAY_10MICRO:  // 20260906 JMG: Added 10us delay for U8g2 core timing compliance
-            for (uint32_t i = 0; i < arg_int * 100; i++)
+        {
+            volatile uint32_t i;
+            for (i = 0; i < arg_int * 100; i++)
             {
                 __NOP();
             }  // Approximate for H7 @ 480MHz
             break;
+        }
         case U8X8_MSG_GPIO_RESET:
-// U8g2 calls this to toggle the reset pin
-// If you set U8X8_PIN_NONE, you safely do nothing here
-// Assuming reset is handled elsewhere or tied to hardware reset
-#ifdef DEBUG
-            printf("[U8G2 GPIO/DELAY] message: %d\n", msg);
-#endif /* DEBUG */
-            break;
-        default:
-#ifdef DEBUG
-            printf("[U8G2 GPIO/DELAY] Unhandled message: %d\n", msg);
-#endif /* DEBUG */
-            return 0;
-    }
-    return 1;
-}
+            // U8g2 calls this to toggle the reset pin
+            // If you set U8X8_PIN_NONE, you safely do nothing here
+            // Assuming reset is handled elsewhere or tied to hardware reset
+            #ifdef DEBUG
+                        printf("[U8G2 GPIO/DELAY] message: %d\n", msg);
+            #endif /* DEBUG */
+                        break;
+                    default:
+            #ifdef DEBUG
+                        printf("[U8G2 GPIO/DELAY] Unhandled message: %d\n", msg);
+            #endif /* DEBUG */
+                        return 0;
+                }
+                return 1;
+            }
 
 // This interrupt fires automatically whenever an internal I2C DMA completion occurs
 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef* hi2c)
