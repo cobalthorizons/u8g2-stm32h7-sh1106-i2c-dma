@@ -4,9 +4,8 @@
  * @todo    evaluate __DSB(); gold standard?
  * @author  J.M.Gaskill
  * @date    2026-08-28
- * @version 0.1.0
+ * @version 1.1.0
  * @note    #define OLED_I2C_ADDRESS ((uint16_t)(0x3C)) in main.h
- * @note    This file is part of the CT50 Mk-I project.
  * @note    See the LICENSE file in the project root for license terms.
  */
 
@@ -46,14 +45,28 @@ void U8G2_HAL_SH1106_Init(u8g2_t* u8g2, I2C_HandleTypeDef* hi2c)
 {
     p_hi2c = hi2c;  // Only map the real physical pointer on the actual chip
 
+    /* Ensure the previous transfer is fully complete before we touch the panel state again. */
+    while (!i2c_dma_tx_complete)
+    {
+        __NOP();
+    }
+
     /* Constructor for the SH1106 128x64 noname I2C hardware via u8g2_d_setup.c */
     u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2, U8G2_R1, u8x8_byte_stm32_hw_dma_i2c, u8x8_gpio_and_delay_stm32);
     u8g2_SetI2CAddress(u8g2, (OLED_I2C_ADDRESS << 1));  // Set the I2C address for the SH1106 display
-    u8g2_InitDisplay(u8g2);                             // Send initialization sequence to the glass
-    /* Comment the following line to prevent the display from being powered on  initialization */
+
+    /* Send the SH1106 init sequence and allow the panel to settle after reset/power-up. */
+    u8g2_InitDisplay(u8g2);  // Send initialization sequence to the glass
+    HAL_Delay(10);
+
+    /* Wake the panel and immediately clear the display RAM to avoid stale boot artifacts. */
     u8g2_SetPowerSave(u8g2, 0);  // Wake up display
+    HAL_Delay(10);
+
     u8g2_ClearBuffer(u8g2);
-    u8g2_SendBuffer(u8g2); // Push black frame to display
+    u8g2_SendBuffer(u8g2);  // Push a black frame to the panel to eliminate boot garbage
+
+    /* Do not return until the first DMA transfer has finished; this avoids races with the next frame. */
     while (!i2c_dma_tx_complete)
     {
         __NOP();
