@@ -1,4 +1,4 @@
-"# u8g2-stm32h7-sh1106-i2c-dma
+# u8g2-stm32h7-sh1106-i2c-dma
 
 A compact U8G2 driver layer for SH1106-based 128x64 OLED displays on STM32H7 microcontrollers using I2C with DMA. The project is designed to work as a thin hardware adapter between the U8G2 drawing API and the STM32 HAL/I2C DMA path, with buffering and completion tracking tuned for the H7 memory architecture.
 
@@ -262,4 +262,3 @@ This project is intended to be used with the project license terms available in 
 ## Summary
 
 This repository provides a pragmatic STM32H7 + U8G2 + SH1106 adapter for DMA-based I2C OLED updates. It focuses on reliable DMA transmission, correct H7 memory placement, and low-level debug visibility without introducing excessive abstraction or complexity.
-" 
