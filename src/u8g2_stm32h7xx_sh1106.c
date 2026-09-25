@@ -1,16 +1,17 @@
 /**
  * @file    u8g2_stm32h7xx_sh1106.c
- * @brief   SH1106 OLED display driver for STM32H7xx microcontrollers
+ * @brief   SH1106 OLED display driver for STM32H7xx microcontrollers using u8g2 library with I2C DMA support.
  * @todo    evaluate __DSB(); gold standard?
  * @author  J.M.Gaskill
- * @date    2024-06-05
- * @version 0.0.2
+ * @date    2026-08-28
+ * @version 0.1.0
+ * @note    #define OLED_I2C_ADDRESS ((uint16_t)(0x3C)) in main.h
  * @note    This file is part of the CT50 Mk-I project.
  * @note    See the LICENSE file in the project root for license terms.
  */
 
-#include "main.h"
 #include "u8g2_stm32h7xx_sh1106.h"
+#include "main.h"
 #include <stdio.h>
 
 static I2C_HandleTypeDef* p_hi2c;  // Pointer to the I2C handle used for communication with the SH1106 display
@@ -23,7 +24,7 @@ volatile uint8_t i2c_dma_tx_complete = 1;
     which helps avoid cache coherency issues when using DMA.
     160 bytes is 32-byte aligned (32 * 5). Perfect for Cortex-M7 cache lines. RAM_D2 is uncached */
 __attribute__((
-    section(".ram_d2_buffers"),
+    section(".RAM_D2"),
     aligned(32))) static uint8_t dma_buffer[256];  // 160 bytes is more than enough for a single frame of SH1106 data
 static uint16_t buf_idx = 0;                       // Index into the DMA buffer for the current transfer
 
@@ -43,17 +44,15 @@ void U8G2_HAL_StartFrame(u8g2_t* u8g2)
 /* SH1106 Initialization Function */
 void U8G2_HAL_SH1106_Init(u8g2_t* u8g2, I2C_HandleTypeDef* hi2c)
 {
-    p_hi2c = hi2c;
+    p_hi2c = hi2c;  // Only map the real physical pointer on the actual chip
 
     /* Constructor for the SH1106 128x64 noname I2C hardware via u8g2_d_setup.c */
     u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2, U8G2_R1, u8x8_byte_stm32_hw_dma_i2c, u8x8_gpio_and_delay_stm32);
     u8g2_SetI2CAddress(u8g2, (OLED_I2C_ADDRESS << 1));  // Set the I2C address for the SH1106 display
-
-    u8g2_InitDisplay(u8g2);  // Send initialization sequence to the glass
+    u8g2_InitDisplay(u8g2);                             // Send initialization sequence to the glass
     // The following line is commented out to prevent the display from being powered on immediately. Uncomment it if you want the display to turn on after initialization.
     u8g2_SetPowerSave(u8g2, 0);  // Wake up display
     u8g2_ClearBuffer(u8g2);
-
     while (!i2c_dma_tx_complete)
     {
         __NOP();
@@ -110,6 +109,7 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
                Ensure the CPU store buffers are drained before returning */
             __DMB();  // Data Memory Barrier
             __DSB();  // Data Synchronization Barrier
+            //__ISB();  // ???
 
             // Push local CPU cache to RAM_D2 so the physical DMA engine can read it
             if (HAL_I2C_Master_Transmit_DMA(p_hi2c, (OLED_I2C_ADDRESS << 1), dma_buffer, buf_idx) != HAL_OK)
@@ -129,10 +129,10 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
                 // Check the peripheral state
                 volatile HAL_I2C_StateTypeDef i2c_state = HAL_I2C_GetState(p_hi2c);
 
-                printf("[I2C ERROR] Transmit Launch Failed. ErrorCode: 0x%lX, State: %d\n", i2c_error, i2c_state);
+                printf("[I2C ERROR] Transmit Launch Failed. ErrorCode: 0x%lX, State: %d\n", i2c_error, (int)i2c_state);
 
-                HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
-                HAL_Delay(50);
+                //HAL_GPIO_TogglePin(HEARTBEAT_LED_PORT, HEARTBEAT_LED_PIN);
+                //HAL_Delay(50);
                 return 0;
             }
             break;
