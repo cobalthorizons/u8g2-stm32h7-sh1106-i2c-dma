@@ -42,6 +42,45 @@ This driver is intended for:
 
 The code explicitly notes that STM32H7 DMA1/DMA2 cannot read from AXI SRAM in D1, so the staging buffer is placed in D2 memory (`RAM_D2` / SRAM3-style region) for compatibility.
 
+## Required project configuration
+
+This driver expects two critical project-level definitions to be present in the target firmware.
+
+### 1) OLED address in main.h
+
+Add the display address definition in the firmware `main.h` or equivalent board config header:
+
+```c
+#define OLED_I2C_ADDRESS ((uint16_t)(0x3C))
+```
+
+This is required because the driver uses the value when it initializes the SH1106 and sets the I2C device address:
+
+```c
+u8g2_SetI2CAddress(u8g2, (OLED_I2C_ADDRESS << 1));
+```
+
+If this value is missing or different from the actual panel address, the display will not initialize correctly.
+
+### 2) RAM_D2 linker memory region and NOLOAD section
+
+The DMA staging buffer is intentionally assigned to the D2 SRAM region. This is required for STM32H7 DMA compatibility, but it also creates a specific linker requirement: the `.RAM_D2` section must be declared as `NOLOAD` in the linker script. Without this, OpenOCD may treat the `.elf` as containing non-flash data in the `0x30000000` SRAM region and then fail verification because that memory is not backed by a flash bank.
+
+Example linker-script requirement:
+
+```ld
+RAM_D2 (rwx) : ORIGIN = 0x30000000, LENGTH = 288K
+
+.RAM_D2 (NOLOAD) :
+{
+    . = ALIGN(4);
+    KEEP (*(.RAM_D2))
+    . = ALIGN(4);
+} > RAM_D2
+```
+
+The key requirement is the `NOLOAD` flag on the `.RAM_D2` section. This prevents the linker from emitting SRAM contents as flash-loadable data and avoids OpenOCD verification failures for a region mapped to `0x30000000`.
+
 ## API
 
 Public functions exposed by `u8g2_stm32h7xx_sh1106.h`:
@@ -154,6 +193,67 @@ This project expects the following to be available in the embedded application:
 - The file `src/u8g2_stm32h7xx_sh1106.c` includes a static initialization command array for SH1106, but the main U8G2 setup function is the primary path used for initialization.
 - The code is designed to be embedded into a larger firmware project rather than used as a standalone demo application.
 - The `OLED_I2C_ADDRESS` constant is defined as `0x3C` in the host test stubs and in the library logic.
+
+## Known pitfalls and failure modes
+
+This section is the one most teams wish they had read before debugging a dead display or an OpenOCD verification failure.
+
+### 1) SRAM section in D2 mapped to `0x30000000` must be `NOLOAD`
+
+This is the most common hard failure on STM32H7 builds using a custom `.RAM_D2` section. If the linker creates a section in `0x30000000` and the script does not mark it as `NOLOAD`, the `.elf` may contain data that appears to be flash-backed content for RAM. OpenOCD then tries to flash and verify that region as if it were normal program memory, which fails because there is no matching flash bank at `0x30000000`.
+
+What to do:
+
+```ld
+RAM_D2 (rwx) : ORIGIN = 0x30000000, LENGTH = 0x00080000
+
+.RAM_D2 (NOLOAD) :
+{
+    . = ALIGN(4);
+    KEEP (*(.RAM_D2))
+    . = ALIGN(4);
+} > RAM_D2
+```
+
+The important bit is `NOLOAD`. It tells the linker: “this memory is runtime RAM, not flash image payload.”
+
+### 2) The OLED I2C address must match the hardware exactly
+
+A mismatch between the board wiring and `OLED_I2C_ADDRESS` causes initialization failure, NACKs, and a blank panel. The driver does not guess; it sends the exact address passed to the display transaction.
+
+This is the required definition:
+
+```c
+#define OLED_I2C_ADDRESS ((uint16_t)(0x3C))
+```
+
+If your panel is on a different address, you must set it before initialization. Do not leave this undefined or hard-coded differently from the physical device.
+
+### 3) DMA cannot safely operate on AXI SRAM in D1
+
+On STM32H7 devices, DMA1/DMA2 cannot correctly read from the AXI SRAM region in D1. This project intentionally places the staging buffer in D2 memory to avoid that limitation. If you move the buffer back into a D1 region, you may see stable builds with unstable runtime behavior or silent data corruption.
+
+### 4) Buffer reuse without waiting for DMA completion
+
+The driver uses `i2c_dma_tx_complete` to block a new frame until the previous DMA transfer is finished. If the firmware writes to the same buffer or calls `u8g2_ClearBuffer(...)` while a DMA transfer is in progress, it can corrupt the frame payload or leave the display in a partial state.
+
+### 5) Debugging without register-state checks is slow and expensive
+
+If the display never wakes up, the fix is rarely “just try another library.” The first step is to inspect the DMA and I2C state with:
+
+```c
+U8G2_HAL_Dump_I2C_DMA_State();
+```
+
+This reveals: NACKs, DMA error flags, bus busy states, DMAMUX mapping issues, and missing TX DMA enable configuration.
+
+### 6) SH1106 init timing and power state matter
+
+The SH1106 often needs a proper startup sequence and a wake-up command before the first framebuffer push. If the panel is left in sleep mode or the initialization sequence is not fully applied, the display may appear completely dead even though the I2C line itself is alive.
+
+### 7) OpenOCD + custom RAM sections is a linker issue, not a flash issue
+
+If the symptom is: “verification fails at SRAM address `0x30000000`,” the fix is not to add more flash banks or change the debugger. It is to verify that the custom RAM section is correctly declared as `NOLOAD` and that the `.elf` is not exporting runtime RAM contents as flash-load data.
 
 ## License
 
