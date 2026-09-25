@@ -1,7 +1,6 @@
 /**
  * @file    u8g2_stm32h7xx_sh1106.c
  * @brief   SH1106 OLED display driver for STM32H7xx microcontrollers using u8g2 library with I2C DMA support.
- * @todo    evaluate __DSB(); gold standard?
  * @author  J.M.Gaskill
  * @date    2026-08-28
  * @version 1.1.0
@@ -13,60 +12,60 @@
 #include "main.h"
 #include <stdio.h>
 
-static I2C_HandleTypeDef* p_hi2c;  // Pointer to the I2C handle used for communication with the SH1106 display
-// Flag to indicate the completion of the I2C DMA transmission. Set to 1 when the DMA transfer is complete, and 0 when a transfer is in progress.
+static I2C_HandleTypeDef* p_hi2c;  // Pointer to I2C handle used for communication with SH1106 display
+// Flag to indicate completion of I2C DMA transmission. Set to 1 when DMA transfer is complete, and 0 when a transfer is in progress.
 volatile uint8_t i2c_dma_tx_complete = 1;
-/* On the STM32H7, DMA1 and DMA2 physically cannot read from AXI SRAM (the D1 Domain).
+/* On STM32H7, DMA1 and DMA2 physically cannot read from AXI SRAM (D1 Domain).
     The AXI SRAM is in the D2 Domain, which is not accessible to DMA1 or DMA2.
-    Therefore, we must place the buffer in the D2 Domain (RAM_D2, typically SRAM3 at 0x30040000) to allow DMA to read it.
-    Additionally, we align the buffer to 32 bytes to match the cache line size of the H7,
+    Therefore, we must place buffer in the D2 Domain (RAM_D2, typically SRAM3 at 0x30040000) to allow DMA to read it.
+    Additionally, we align the buffer to 32 bytes to match cache line size of the H7,
     which helps avoid cache coherency issues when using DMA.
     160 bytes is 32-byte aligned (32 * 5). Perfect for Cortex-M7 cache lines. RAM_D2 is uncached */
 __attribute__((
     section(".RAM_D2"),
     aligned(32))) static uint8_t dma_buffer[256];  // 160 bytes is more than enough for a single frame of SH1106 data
-static uint16_t buf_idx = 0;                       // Index into the DMA buffer for the current transfer
+static uint16_t buf_idx = 0;                       // Index into DMA buffer for current transfer
 
 /*  */
 void U8G2_HAL_StartFrame(u8g2_t* u8g2)
 {
-    // Hardware Lock: Wait for ongoing DMA background transfers to finish before wiping the buffer
+    // Hardware Lock: Wait for ongoing DMA background transfers to finish before wiping buffer
     while (!i2c_dma_tx_complete)
     {
         __NOP();
     }
 
-    // Safe to clear the local frame canvas while the peripheral hardware sits idle
+    // Safe to clear local frame canvas while peripheral hardware sits idle
     u8g2_ClearBuffer(u8g2);
 }
 
 /* SH1106 Initialization Function */
 void U8G2_HAL_SH1106_Init(u8g2_t* u8g2, I2C_HandleTypeDef* hi2c)
 {
-    p_hi2c = hi2c;  // Only map the real physical pointer on the actual chip
+    p_hi2c = hi2c;  // Only map real physical pointer on actual chip
 
-    /* Ensure the previous transfer is fully complete before we touch the panel state again. */
+    /* Ensure previous transfer is fully complete before touching panel state again. */
     while (!i2c_dma_tx_complete)
     {
         __NOP();
     }
 
-    /* Constructor for the SH1106 128x64 noname I2C hardware via u8g2_d_setup.c */
+    /* Constructor for SH1106 128x64 noname I2C hardware via u8g2_d_setup.c */
     u8g2_Setup_sh1106_i2c_128x64_noname_f(u8g2, U8G2_R1, u8x8_byte_stm32_hw_dma_i2c, u8x8_gpio_and_delay_stm32);
-    u8g2_SetI2CAddress(u8g2, (OLED_I2C_ADDRESS << 1));  // Set the I2C address for the SH1106 display
+    u8g2_SetI2CAddress(u8g2, (OLED_I2C_ADDRESS << 1));  // Set  I2C address for SH1106 display
 
-    /* Send the SH1106 init sequence and allow the panel to settle after reset/power-up. */
+    /* Send SH1106 init sequence and allow panel to settle after reset/power-up. */
     u8g2_InitDisplay(u8g2);  // Send initialization sequence to the glass
     HAL_Delay(10);
 
-    /* Wake the panel and immediately clear the display RAM to avoid stale boot artifacts. */
+    /* Wake panel and immediately clear display RAM to avoid stale boot artifacts. */
     u8g2_SetPowerSave(u8g2, 0);  // Wake up display
     HAL_Delay(10);
 
     u8g2_ClearBuffer(u8g2);
-    u8g2_SendBuffer(u8g2);  // Push a black frame to the panel to eliminate boot garbage
+    u8g2_SendBuffer(u8g2);  // Push a black frame to panel to eliminate boot garbage
 
-    /* Do not return until the first DMA transfer has finished; this avoids races with the next frame. */
+    /* Do not return until first DMA transfer has finished; this avoids races with the next frame. */
     while (!i2c_dma_tx_complete)
     {
         __NOP();
@@ -76,11 +75,11 @@ void U8G2_HAL_SH1106_Init(u8g2_t* u8g2, I2C_HandleTypeDef* hi2c)
 /* Hardware byte transmission callback */
 uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, void* arg_ptr)
 {
-    (void)u8x8;  // explicitly tell the compiler this is intentionally unused
+    (void)u8x8;  // explicitly tell compiler this is intentionally unused
     switch (msg)
     {
         case U8X8_MSG_BYTE_INIT:
-            /* Initialization is handled in main.c via MX_I2C1_Init() */
+            /* Initialization is handled via MX_I2C1_Init() */
             break;
         case U8X8_MSG_BYTE_SET_DC:
             /* ignored for standard hardware I2C protocols */
@@ -130,7 +129,6 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
 
             /* Use Data Synchronization Barriers to force CPU pipeline ordering
                Ensure the CPU store buffers are drained before returning */
-            //__DMB();  // Data Memory Barrier
             __DSB();  // Data Synchronization Barrier
 
             /* Attempt to clean the D-Cache, in case the MPU is misconfigured,
@@ -213,7 +211,6 @@ void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef* hi2c)
 {
     if (hi2c->Instance == I2C1)
     {
-        // extern volatile uint8_t i2c_dma_tx_complete; // 20260906: Moved to main.c global scope for unified access
         // Only print in ISRs during active debugging, then comment it out.
         // printf("[I2C ISR SUCCESS] Transferred %d bytes\n", hi2c->XferSize);
         i2c_dma_tx_complete = 1;  // Release lock for next frame
