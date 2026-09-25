@@ -108,7 +108,10 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
                     // FATAL ERROR: U8g2 sent a chunk larger than our DMA buffer.
                     // Halt execution so the developer knows immediately.
                     printf("[U8G2 FATAL] DMA Buffer Overflow!\n");
-                    while(1) { __NOP(); } // Trap
+                    while (1)
+                    {
+                        __NOP();
+                    }  // Trap
                 }
                 data++;
                 arg_int--;
@@ -134,7 +137,7 @@ uint8_t u8x8_byte_stm32_hw_dma_i2c(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, v
             for the exact size of our payload. Ensures physical RAM matches
             CPU cache before DMA reads it. (Takes 32-byte aligned address, and
             calculates number of bytes). */
-            SCB_CleanDCache_by_Addr((uint32_t*)dma_buffer, buf_idx);
+            SCB_CleanDCache_by_Addr((void*)dma_buffer, buf_idx);
 
             // Push local CPU cache to RAM_D2 so the physical DMA engine can read it
             if (HAL_I2C_Master_Transmit_DMA(p_hi2c, (OLED_I2C_ADDRESS << 1), dma_buffer, buf_idx) != HAL_OK)
@@ -189,21 +192,21 @@ uint8_t u8x8_gpio_and_delay_stm32(u8x8_t* u8x8, uint8_t msg, uint8_t arg_int, vo
             break;
         }
         case U8X8_MSG_GPIO_RESET:
-            // U8g2 calls this to toggle the reset pin
-            // If you set U8X8_PIN_NONE, you safely do nothing here
-            // Assuming reset is handled elsewhere or tied to hardware reset
-            #ifdef DEBUG
-                        printf("[U8G2 GPIO/DELAY] message: %d\n", msg);
-            #endif /* DEBUG */
-                        break;
-                    default:
-            #ifdef DEBUG
-                        printf("[U8G2 GPIO/DELAY] Unhandled message: %d\n", msg);
-            #endif /* DEBUG */
-                        return 0;
-                }
-                return 1;
-            }
+// U8g2 calls this to toggle the reset pin
+// If you set U8X8_PIN_NONE, you safely do nothing here
+// Assuming reset is handled elsewhere or tied to hardware reset
+#ifdef DEBUG
+            printf("[U8G2 GPIO/DELAY] message: %d\n", msg);
+#endif /* DEBUG */
+            break;
+        default:
+#ifdef DEBUG
+            printf("[U8G2 GPIO/DELAY] Unhandled message: %d\n", msg);
+#endif /* DEBUG */
+            return 0;
+    }
+    return 1;
+}
 
 // This interrupt fires automatically whenever an internal I2C DMA completion occurs
 void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef* hi2c)
