@@ -78,6 +78,11 @@ build/
 
 # Ignore the dynamically generated firmware version header file
 # (Prevents git from showing uncommitted changes on every single build)
-Core/Inc/version.h
+app/inc/version.h
+
+# Embedded Asset Pipeline Outputs
+# (.svg vector files are tracked as source; generated outputs are ignored)
+assets/profiles/
+*.xbm
 
 .git/
