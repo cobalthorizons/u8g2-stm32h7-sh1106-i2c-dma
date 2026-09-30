@@ -229,11 +229,18 @@ void U8G2_HAL_Dump_I2C_DMA_State(void)
     uint32_t dma_lisr = DMA1->LISR;  // Low Interrupt Status Register
     printf("[DMA1_S0] Raw LISR: 0x%08lX\n", dma_lisr);
 
-    // Stream 0 flags are in bits 0-5 of LISR
+    /*// Stream 0 flags are in bits 0-5 of LISR
     if (dma_lisr & (1U << 5)) printf("  -> [ERROR] Transfer Error (TEIF0) Active!\n");
     if (dma_lisr & (1U << 4)) printf("  -> [ERROR] FIFO Error (FEIF0) Active!\n");
     if (dma_lisr & (1U << 3)) printf("  -> [WARN] Direct Mode Error (DMEIF0) Active!\n");
-    if (dma_lisr & (1U << 2)) printf("  -> Transfer Complete (TCIF0) Set.\n");
+    if (dma_lisr & (1U << 2)) printf("  -> Transfer Complete (TCIF0) Set.\n");*/
+
+    // STM32H7 DMA1 Stream 0 Bit Mapping
+    if (dma_lisr & (1U << 0)) printf("  -> [ERROR] FIFO Error (FEIF0) Active!\n");
+    if (dma_lisr & (1U << 2)) printf("  -> [WARN] Direct Mode Error (DMEIF0) Active!\n");
+    if (dma_lisr & (1U << 3)) printf("  -> [ERROR] Transfer Error (TEIF0) Active!\n");
+    if (dma_lisr & (1U << 4)) printf("  -> [INFO] Half Transfer (HTIF0) Reached.\n");
+    if (dma_lisr & (1U << 5)) printf("  -> [INFO] Transfer Complete (TCIF0) Set.\n");
 
     printf("[DMA1_S0] Remaining NDTR (Bytes left to send): %ld\n", DMA1_Stream0->NDTR);
     printf("[DMA1_S0] Source Address (Memory): 0x%08lX\n", DMA1_Stream0->M0AR);
@@ -250,6 +257,7 @@ void U8G2_HAL_Dump_I2C_DMA_State(void)
     if (i2c_isr & I2C_ISR_OVR) printf("  -> [BUS] OVERRUN/UNDERRUN! Data wasn't supplied to shift register in time.\n");
     if (i2c_isr & I2C_ISR_BUSY) printf("  -> [BUS] Bus is locked (BUSY = 1).\n");
 
+    /* If you want to catch the TXDMAEN bit while it is actually active, you will need to call this dump function immediately after issuing your OLED update command, before the NDTR counts down to 0. */
     if (!(i2c_cr1 & I2C_CR1_TXDMAEN))
     {
         printf("  -> [CONFIG ERROR] TXDMAEN bit is 0! I2C peripheral DMA mapping is turned OFF.\n");
